@@ -1,6 +1,6 @@
 // Import required Node.js modules and libraries
 const express = require('express');
-const { SignJWT, importPKCS8, jwtVerify, createRemoteJWKSet } = require('jose');  // JSON Object Signing and Encryption (JOSE) library
+const { SignJWT, importPKCS8, jwtVerify, createRemoteJWKSet } = require('jose'); // JSON Object Signing and Encryption (JOSE) library
 const axios = require('axios'); // HTTP client for making requests
 const uuid = require('uuid'); // Universally Unique Identifier (UUID) generator
 const dotenv = require('dotenv'); // Load environment variables from a .env file
@@ -12,8 +12,8 @@ const relyingPartyJWKS = require('./spkis/relyingPartyJWKS.json');
 const intermediaryJWKS = require('./spkis/intermediaryJWKS.json');
 
 dotenv.config(); // Load environment variables from the .env file
-process.env.RP_CLIENT_ASSERTION_SIGNING_ALG = process.env.RP_CLIENT_ASSERTION_SIGNING_ALG || "RS256";
-const LOG = process.env.DEBUG === "true" ? console.log.bind(console) : function () { };
+process.env.RP_CLIENT_ASSERTION_SIGNING_ALG = process.env.RP_CLIENT_ASSERTION_SIGNING_ALG || 'RS256';
+const LOG = process.env.DEBUG === 'true' ? console.log.bind(console) : function () {};
 
 const app = express(); // Create an Express application
 const port = 3000; // Define the port for the server to listen on
@@ -52,7 +52,7 @@ app.post('/token', async (req, res) => {
                 client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
                 client_assertion,
                 code,
-                redirect_uri
+                redirect_uri,
             };
 
             if (code_verifier) data.code_verifier = code_verifier;
@@ -69,7 +69,7 @@ app.post('/token', async (req, res) => {
                     client_assertion,
                     code_verifier,
                     code,
-                    redirect_uri
+                    redirect_uri,
                 }),
             };
 
@@ -85,9 +85,12 @@ app.post('/token', async (req, res) => {
             //It's not an RS256 signed id token
             if (header.alg !== context.INTERMEDIARY_SIGNING_ALG) {
                 // It's not signed with the algo I expected it to be
-                if (header.alg !== context.IDP_TOKEN_SIGNING_ALG) return res.status(500).send(`id_token signing token algorithm mismatch, expected ${context.IDP_TOKEN_SIGNING_ALG} , got: ${header.alg}`);
+                if (header.alg !== context.IDP_TOKEN_SIGNING_ALG)
+                    return res
+                        .status(500)
+                        .send(`id_token signing token algorithm mismatch, expected ${context.IDP_TOKEN_SIGNING_ALG} , got: ${header.alg}`);
 
-                const publicKeyIDP = createRemoteJWKSet(new URL(`https://${context.IDP_DOMAIN}${context.IDP_JWKS_ENDPOINT}`))
+                const publicKeyIDP = createRemoteJWKSet(new URL(`https://${context.IDP_DOMAIN}${context.IDP_JWKS_ENDPOINT}`));
 
                 // Verify the id_token with the public key
                 const { payload, protectedHeader } = await jwtVerify(id_token, publicKeyIDP, {
@@ -103,7 +106,7 @@ app.post('/token', async (req, res) => {
                     const at_hashCalc = oidcTokenHash.generate(response.data.access_token, protectedHeader.alg);
                     LOG(at_hashCalc);
                     if (at_hashCalc === payload.at_hash) {
-                        const at_hashCalcRS256 = oidcTokenHash.generate(response.data.access_token, "RS256");
+                        const at_hashCalcRS256 = oidcTokenHash.generate(response.data.access_token, 'RS256');
                         payload.at_hash = at_hashCalcRS256;
                     } else return res.status(500).send(`at_hash mismatch, expected ${payload.at_hash} , got: ${at_hashCalc}`);
                 }
@@ -116,8 +119,6 @@ app.post('/token', async (req, res) => {
             }
             // Send the response with the updated id_token
             return res.status(200).send(response.data);
-
-
         } catch (error) {
             if (error.response) {
                 // Handle errors with HTTP responses
@@ -148,12 +149,10 @@ app.listen(port, () => {
     LOG(`Server is listening at http://localhost:${port}`);
 });
 
-
-
 // Function to load the RS256 private key
 async function loadPrivateKeyForClientAssertion(context) {
     try {
-        var privateKey = context[`RP_PRIVATE_KEY_${context.RP_CLIENT_ASSERTION_SIGNING_ALG}`].replace(/\n/g, "\r\n");
+        var privateKey = context[`RP_PRIVATE_KEY_${context.RP_CLIENT_ASSERTION_SIGNING_ALG}`].replace(/\n/g, '\r\n');
         var key = await importPKCS8(privateKey, context.RP_CLIENT_ASSERTION_SIGNING_ALG);
         return key;
     } catch (e) {
@@ -162,8 +161,6 @@ async function loadPrivateKeyForClientAssertion(context) {
     }
 }
 
-
-
 // Function to generate a client_assertion (JWT) for client authentication
 async function generatePrivateKeyJWTForClientAssertion(context) {
     try {
@@ -171,10 +168,11 @@ async function generatePrivateKeyJWTForClientAssertion(context) {
         LOG(key);
         const jwt = await new SignJWT({})
             .setProtectedHeader({ alg: context.RP_CLIENT_ASSERTION_SIGNING_ALG, kid: context[`RP_KID_${context.RP_CLIENT_ASSERTION_SIGNING_ALG}`] })
-            .setIssuedAt()
+            // .setIssuedAt()
             .setIssuer(context.RP_ID)
             .setSubject(context.RP_ID)
-            .setAudience([`https://${context.IDP_DOMAIN}/`, `https://${context.IDP_DOMAIN}/token`])
+            // .setAudience([`https://${context.IDP_DOMAIN}/`, `https://${context.IDP_DOMAIN}/token`])
+            .setAudience(`https://${context.IDP_DOMAIN}/token`)
             .setExpirationTime('2m') // Expiration time
             .setJti(uuid.v4())
             .sign(key);
@@ -193,7 +191,7 @@ async function generateRS256Token(payload, context) {
         const key = await loadRS256PrivateKey(context);
         console.log(key);
         const jwt = await new SignJWT(payload)
-            .setProtectedHeader({ alg: context.INTERMEDIARY_SIGNING_ALG, kid: context.INTERMEDIARY_KEY_KID, typ: "JWT" })
+            .setProtectedHeader({ alg: context.INTERMEDIARY_SIGNING_ALG, kid: context.INTERMEDIARY_KEY_KID, typ: 'JWT' })
             .setIssuedAt()
             .setIssuer(`https://${context.IDP_DOMAIN}`)
             .setAudience(context.RP_ID)
@@ -211,7 +209,7 @@ async function generateRS256Token(payload, context) {
 // Function to load the RS256 private key
 async function loadRS256PrivateKey(context) {
     try {
-        var privateKey = context.INTERMEDIARY_PRIVATE_KEY.replace(/\n/g, "\r\n");
+        var privateKey = context.INTERMEDIARY_PRIVATE_KEY.replace(/\n/g, '\r\n');
         var key = await importPKCS8(privateKey, context.INTERMEDIARY_SIGNING_ALG);
         return key;
     } catch (e) {
@@ -219,7 +217,3 @@ async function loadRS256PrivateKey(context) {
         return e;
     }
 }
-
-
-
-
