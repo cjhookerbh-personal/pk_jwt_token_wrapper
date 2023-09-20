@@ -115,7 +115,6 @@ app.post('/token', async (req, res) => {
 
                 // Generate an RS256 token from the payload for auth0
                 const jwt = await generateRS256Token(payload, context);
-                LOG(jwt);
                 response.data.id_token = jwt;
             }
             // Send the response with the updated id_token
