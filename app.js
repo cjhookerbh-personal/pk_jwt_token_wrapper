@@ -136,9 +136,9 @@ app.post('/token', async (req, res) => {
 
 // Create a route for /.well-known/keys
 // Used by the relying party of IDP to provide an ES256 public key for client authentication
-app.get('/.well-known/keys', async (req, res) => {
-    res.json(relyingPartyJWKS);
-});
+// app.get('/.well-known/keys', async (req, res) => {
+//     res.json(relyingPartyJWKS);
+// });
 
 app.get('/intermediary.jwks', async (req, res) => {
     res.json(intermediaryJWKS);
